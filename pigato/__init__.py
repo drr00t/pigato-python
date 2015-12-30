@@ -30,6 +30,7 @@ import zmq
 from tornado.log import gen_log
 from zmq.eventloop import ioloop, zmqstream
 from zmq.utils.monitor import recv_monitor_message
+from zmq.utils import jsonapi
 
 import mdp
 
@@ -55,7 +56,7 @@ class Client():
         print('client id {0}'.format( self._conf.get('prefix')))
         self._liveness = HEARTBEAT_LIVENESS
         self._broker = broker
-        self._loop = io_loop or ioloop.IOLoop.instance()
+        self._loop = io_loop or ioloop.IOLoop.current()
         self._ctx = context or zmq.Context.instance()
         self._reqs = dict()
 
@@ -69,6 +70,7 @@ class Client():
         self.stop()
         self._mcnt = 0
         self._socketId = '{0}-{1}'.format(self._conf['prefix'], uuid4())
+        print(self._socketId)
 
         self._sock = self._ctx.socket(zmq.DEALER)
         self._monitor = self._sock.get_monitor_socket()
@@ -88,7 +90,7 @@ class Client():
         # self.hbeater = ioloop.PeriodicCallback(self.beat, period, self._loop)
         # self.hbeater.start()
         self.on_start()
-        self._loop.start()
+        # self._loop.start()
 
     def stop(self):
         self.on_stop()
@@ -127,7 +129,7 @@ class Client():
 
         self._reqs[rid]=req
 
-        self.send([mdp.CLIENT, mdp.W_REQUEST, serviceName, rid, json.dumps(data), json.dumps(opts)])
+        self.send([mdp.CLIENT, mdp.W_REQUEST, serviceName, rid, jsonapi.dumps(data), jsonapi.dumps(opts)])
 
         return req
 
@@ -211,7 +213,7 @@ class Client():
         data = msg[5] or None
 
         if data:
-            data = json.dump(data)
+            data = jsonapi.loads(data)
 
         if err == -1:
             err = data
@@ -245,12 +247,12 @@ class Client():
         print('i am stopped.')
 
     def on_connect(self):
-        print('i am connected.')
+        print('i am zmq connected.')
         client.request('echo', 'foo-stream', { 'timeout': 10000 })
-        print('i made a request.')
+        print('i made an service request.')
 
     def on_disconnect(self):
-        print('i was disconnected.')
+        print('i was zmq disconnected.')
 
     @property
     def get_time(self):
